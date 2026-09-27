@@ -11,33 +11,25 @@ jobs:
     runs-on: macos-14
 
     steps:
-      # ─── 1. Checkout ─────────────────────────────────────
       - name: 📦 Checkout Repository
         uses: actions/checkout@v4
 
-      # ─── 1.1 Auto-Extract ZIP if uploaded ────────────────
       - name: 📂 Extract aloalo.zip if uploaded
         run: |
           if [ -f "aloalo.zip" ]; then
-            echo "Found aloalo.zip! Extracting all files..."
-            unzip -o -q aloalo.zip
+            echo "Found aloalo.zip! Extracting with Python..."
+            python3 -c "import zipfile; zipfile.ZipFile('aloalo.zip').extractall('.')"
             ls -la
           fi
 
-      # ─── 2. Xcode Setup ──────────────────────────────────
       - name: 🛠 Select Xcode 15
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
 
-      # ─── 3. XcodeGen ─────────────────────────────────────
       - name: 📋 Install XcodeGen
         run: brew install xcodegen
 
-      - name: ⚙️ Generate Xcode Project
-        run: xcodegen generate
-
-      # ─── 4. App Icon ─────────────────────────────────────
       - name: 🎨 Generate App Icon
         run: |
           mkdir -p Sources/App/Assets.xcassets/AppIcon.appiconset
@@ -74,7 +66,15 @@ jobs:
           }
           EOF
 
-      # ─── 5. Build Archive ─────────────────────────────────
+          cat > Sources/App/Assets.xcassets/Contents.json << 'EOF'
+          {
+            "info": {"author":"xcode","version":1}
+          }
+          EOF
+
+      - name: ⚙️ Generate Xcode Project
+        run: xcodegen generate
+
       - name: 🏗 Build Archive
         run: |
           xcodebuild archive \
@@ -86,7 +86,6 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-      # ─── 6. Package IPA ──────────────────────────────────
       - name: 📦 Package Unsigned IPA
         run: |
           mkdir -p build/Payload
@@ -95,7 +94,6 @@ jobs:
           zip -qr "0xjz1.ipa" Payload
           echo "✅ IPA package created successfully at build/0xjz1.ipa"
 
-      # ─── 7. Upload IPA Artifact ───────────────────────────
       - name: 🚀 Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
